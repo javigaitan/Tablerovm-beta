@@ -1,0 +1,229 @@
+.container {
+  padding: 1.75rem;
+  max-width: 1200px;
+}
+
+.pageTitle {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: .3rem;
+}
+
+.pageSubtitle {
+  color: var(--text-secondary);
+  font-size: .9rem;
+  margin-bottom: 1.5rem;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.grid4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+/* ── File tree ── */
+.fileTree {
+  background: #0f172a;
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.25rem;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: .82rem;
+  line-height: 2;
+  color: #e2e8f0;
+}
+.treeItem { display: block; }
+.treeItem[data-level="0"] { color: #f8fafc; font-weight: 700; }
+.treeItem[data-level="1"] { padding-left: 1.5rem; color: #93c5fd; }
+.treeItem[data-level="2"] { padding-left: 3rem; color: #d1fae5; }
+.treeItem[data-level="3"] { padding-left: 4.5rem; color: #fde68a; }
+.treeNote { color: #64748b; font-style: italic; }
+
+/* ── Flow diagram ── */
+.flowDiagram {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+  padding: 1rem 0;
+}
+
+.flowStep {
+  text-align: center;
+  background: #f8faff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  min-width: 110px;
+  flex: 1;
+}
+.flowIcon { font-size: 1.8rem; margin-bottom: .3rem; }
+.flowLabel { font-weight: 600; font-size: .88rem; color: var(--primary); }
+.flowSub { font-size: .75rem; color: var(--text-secondary); margin-top: .15rem; }
+.flowArrow { font-size: 1.5rem; color: var(--accent); font-weight: 700; }
+
+/* ── Role card ── */
+.roleCard {
+  border-left: 4px solid var(--accent);
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: .75rem;
+}
+.roleName { font-weight: 700; color: var(--primary); margin-bottom: .25rem; }
+.roleDesc { font-size: .84rem; color: var(--text-secondary); }
+
+/* ── Panel card ── */
+.panelCard {
+  background: linear-gradient(135deg, #f0f7ff, #e8f4fd);
+  border: 1px solid #bee3f8;
+  border-top: 3px solid var(--primary);
+  border-radius: var(--radius-md);
+  padding: 1.1rem;
+}
+.panelCardTitle { font-weight: 700; color: var(--primary); margin-bottom: .5rem; }
+.panelCardList { list-style: none; }
+.panelCardList li {
+  font-size: .83rem;
+  color: var(--text-secondary);
+  padding: .2rem 0;
+  display: flex;
+  align-items: flex-start;
+  gap: .4rem;
+}
+.panelCardList li::before { content: '•'; color: var(--accent); font-size: 1rem; line-height: 1.4; flex-shrink: 0; }
+
+/* ── Campo row ── */
+.campoRow {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 3fr;
+  gap: .75rem;
+  padding: .55rem .75rem;
+  border-bottom: 1px solid var(--border);
+  font-size: .83rem;
+  align-items: start;
+}
+.campoRow:last-child { border-bottom: none; }
+.campoRow:hover { background: #f8faff; }
+.campoHeader {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+/* ── Acceso ── */
+.accessTable { width: 100%; border-collapse: collapse; }
+.accessTable th, .accessTable td { padding: .6rem .9rem; border: 1px solid var(--border); font-size: .84rem; }
+.accessTable th { background: var(--primary); color: #fff; font-weight: 600; font-size: .78rem; }
+.accessTable td.check { text-align: center; font-size: 1rem; }
+
+/* ── KPI grid (Preview) ── */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.kpiCard {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--primary);
+  padding: 1.1rem 1.25rem;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+.kpiCard:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.kpiCard.gold { border-top-color: var(--accent); }
+
+/* ── Filters ── */
+.filtersBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: .85rem 1.1rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+.filterLabel {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-right: .3rem;
+}
+
+/* ── Charts grid ── */
+.chartsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+.chartCard {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+.chartTitle {
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.chartWrap { height: 250px; position: relative; }
+
+/* ── Ranking table ── */
+.rankingTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .83rem;
+}
+.rankingTable th {
+  background: var(--primary);
+  color: #fff;
+  padding: .5rem .85rem;
+  text-align: left;
+  font-size: .76rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.rankingTable td {
+  padding: .45rem .85rem;
+  border-bottom: 1px solid var(--border);
+}
+.rankingTable tbody tr:hover { background: #f8faff; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .grid2, .grid3, .grid4, .chartsGrid { grid-template-columns: 1fr; }
+  .campoRow { grid-template-columns: 1fr 1fr; }
+  .container { padding: 1rem; }
+}

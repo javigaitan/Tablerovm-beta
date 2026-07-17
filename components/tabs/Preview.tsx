@@ -122,7 +122,7 @@ export default function Preview() {
       <div className={styles.kpiGrid}>
         {[
           { label: 'Ventas Cerradas', value: kpis.totalVentas.toString(), icon: '🎯', gold: false },
-          { label: 'Revenue Total', value: fmtUSD(kpis.totalRevenue), icon: '💰', gold: true },
+          { label: 'Facturacion Total', value: fmtUSD(kpis.totalRevenue), icon: '💰', gold: true },
           { label: 'Ticket Promedio', value: fmtUSD(kpis.ticketPromedio), icon: '📊', gold: true },
           { label: 'Top Vendedor', value: kpis.topVendedor, icon: '🏆', gold: false },
           { label: 'Top Canal', value: kpis.topCanal, icon: '📣', gold: false },

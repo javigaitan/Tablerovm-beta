@@ -1,12 +1,12 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale, LinearScale, BarElement, ArcElement,
   LineElement, PointElement, Title, Tooltip, Legend,
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import { salesData, filterData, calcKPIs, getMonthlySeries, getUniqueValues, getYears, getMesesVenta, countBy, groupBy, sumBy, getConversionPautaPorAsesor } from '@/lib/dataUtils';
+import { salesData, filterData, calcKPIs, getMonthlySeries, getUniqueValues, getYears, getMesesVenta, countBy, groupBy, sumBy, getConversionPautaPorAsesor, getLeadsPorAsesorPeriodos } from '@/lib/dataUtils';
 import styles from './Tab.module.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, LineElement, PointElement, Title, Tooltip, Legend);
@@ -36,14 +36,49 @@ function fmtUSD(n: number) { return '$' + fmt(n); }
 
 export default function Preview() {
   const [filters, setFilters] = useState({
-    year: 'Todos', mes: 'Todos', vendedor: 'Todos', canal: 'Todos',
+    year: 'Todos', vendedor: 'Todos', canal: 'Todos',
     destino: 'Todos', escuela: 'Todos', nacionalidad: 'Todos',
   });
+  const [mesesSeleccionados, setMesesSeleccionados] = useState<string[]>([]);
+  const [mesDropdownOpen, setMesDropdownOpen] = useState(false);
+  const mesDropdownRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 15;
 
+  // ── Filtros locales para la sección "Conversión de Pauta por Asesor" ─────
+  const [convYear, setConvYear] = useState('Todos');
+  const [convMeses, setConvMeses] = useState<string[]>([]);
+  const [convMesDropdownOpen, setConvMesDropdownOpen] = useState(false);
+  const convMesDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Cierre de dropdowns al hacer click fuera
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (mesDropdownRef.current && !mesDropdownRef.current.contains(e.target as Node)) {
+        setMesDropdownOpen(false);
+      }
+      if (convMesDropdownRef.current && !convMesDropdownRef.current.contains(e.target as Node)) {
+        setConvMesDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+  const periodos = useMemo(() => getLeadsPorAsesorPeriodos(), []);
+  const convMesesDisponibles = useMemo(
+    () => convYear === 'Todos'
+      ? periodos.meses
+      : periodos.meses.filter(m => m.trim().endsWith(convYear)),
+    [convYear, periodos]
+  );
+
   const years  = useMemo(() => ['Todos', ...getYears(salesData).map(String).reverse()], []);
-  const meses      = useMemo(() => ['Todos', ...getMesesVenta(salesData)], []);
+  // opciones de mes condicionadas al año seleccionado
+  const mesesDisponibles = useMemo(
+    () => getMesesVenta(salesData, filters.year),
+    [filters.year]
+  );
+
   const vendedores = useMemo(() => ['Todos', ...getUniqueValues(salesData, 'vendedor')], []);
   const canales    = useMemo(() => ['Todos', ...getUniqueValues(salesData, 'canal')], []);
   const destinos   = useMemo(() => ['Todos', ...getUniqueValues(salesData, 'destino')], []);
@@ -51,18 +86,44 @@ export default function Preview() {
   const nacs       = useMemo(() => ['Todos', ...getUniqueValues(salesData, 'nacionalidad')], []);
 
   const setF = (k: keyof typeof filters, v: string) => {
+    // Al cambiar el año, limpiar los meses seleccionados (ya no aplican)
+    if (k === 'year') setMesesSeleccionados([]);
     setFilters(prev => ({ ...prev, [k]: v }));
     setPage(0);
   };
 
-  const filtered = useMemo(() => filterData(salesData, filters), [filters]);
+  const toggleMes = (mes: string) => {
+    setMesesSeleccionados(prev =>
+      prev.includes(mes) ? prev.filter(m => m !== mes) : [...prev, mes]
+    );
+    setPage(0);
+  };
+
+  const limpiarFiltros = () => {
+    setFilters({ year:'Todos', vendedor:'Todos', canal:'Todos', destino:'Todos', escuela:'Todos', nacionalidad:'Todos' });
+    setMesesSeleccionados([]);
+    setMesDropdownOpen(false);
+    setConvMesDropdownOpen(false);
+    setPage(0);
+  };
+
+  const filtered = useMemo(
+    () => filterData(salesData, { ...filters, meses: mesesSeleccionados }),
+    [filters, mesesSeleccionados]
+  );
   const kpis = useMemo(() => calcKPIs(filtered), [filtered]);
   const monthly = useMemo(() => getMonthlySeries(filtered), [filtered]);
   // Nota: la conversión de Pauta por asesor usa siempre salesData (sin filtros
   // de la barra) porque cruza contra leadsPorAsesor.ts, que ya viene agregado
   // por asesor+mes. Si filtráramos por año/vendedor acá, el cruce se rompería
   // para los meses que no estén dentro del filtro activo.
-  const conversionAsesor = useMemo(() => getConversionPautaPorAsesor(), []);
+  const conversionAsesor = useMemo(
+    () => getConversionPautaPorAsesor(salesData, undefined, {
+      year: convYear,
+      meses: convMeses,
+    }),
+    [convYear, convMeses]
+  );
 
   // Chart data
   const byVendedor = useMemo(() => countBy(filtered, r => r.vendedor), [filtered]);
@@ -92,14 +153,85 @@ export default function Preview() {
       {/* ── FILTROS ── */}
       <div className={styles.filtersBar}>
         <span className={styles.filterLabel}>🔍 Filtros:</span>
+
+        {/* Año */}
+        <select className="vm-select" value={filters.year} onChange={e => setF('year', e.target.value)}>
+          {years.map(o => <option key={o} value={o}>{o === 'Todos' ? 'Año: Todos' : o}</option>)}
+        </select>
+
+        {/* Mes — multi-select custom */}
+        <div ref={mesDropdownRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setMesDropdownOpen(p => !p)}
+            style={{
+              appearance: 'none', background: '#fff', border: `1px solid ${mesesSeleccionados.length > 0 ? 'var(--accent)' : 'var(--border)'}`,
+              borderRadius: 'var(--radius-sm)', padding: '.42rem .9rem', fontSize: '.83rem',
+              cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-primary)',
+              display: 'flex', alignItems: 'center', gap: '.4rem', minWidth: 130,
+              fontWeight: mesesSeleccionados.length > 0 ? 600 : 400,
+            }}
+          >
+            📅 {mesesSeleccionados.length === 0
+              ? 'Mes: Todos'
+              : mesesSeleccionados.length === 1
+                ? mesesSeleccionados[0].split(' ')[0]
+                : `${mesesSeleccionados.length} meses`}
+            <span style={{ marginLeft: 'auto', opacity: .5, fontSize: '.7rem' }}>▼</span>
+          </button>
+
+          {mesDropdownOpen && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 200,
+              background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+              boxShadow: 'var(--shadow-md)', minWidth: 210, padding: '.4rem 0', maxHeight: 280, overflowY: 'auto',
+            }}>
+              {/* Botón limpiar meses */}
+              {mesesSeleccionados.length > 0 && (
+                <button
+                  onClick={() => { setMesesSeleccionados([]); setPage(0); }}
+                  style={{ width: '100%', padding: '.4rem .85rem', background: '#fff7ed', border: 'none', textAlign: 'left', fontSize: '.8rem', cursor: 'pointer', color: '#e67e22', fontWeight: 600, fontFamily: 'inherit', borderBottom: '1px solid var(--border)' }}
+                >
+                  ✖ Limpiar selección
+                </button>
+              )}
+              {mesesDisponibles.length === 0 && (
+                <div style={{ padding: '.6rem .85rem', color: 'var(--text-muted)', fontSize: '.83rem' }}>Sin meses disponibles</div>
+              )}
+              {mesesDisponibles.map(mes => {
+                const sel = mesesSeleccionados.includes(mes);
+                return (
+                  <button
+                    key={mes}
+                    onClick={() => toggleMes(mes)}
+                    style={{
+                      width: '100%', padding: '.45rem .85rem', background: sel ? '#f0f7ff' : '#fff',
+                      border: 'none', textAlign: 'left', fontSize: '.84rem', cursor: 'pointer',
+                      color: sel ? 'var(--primary)' : 'var(--text-primary)', fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center', gap: '.6rem', fontWeight: sel ? 600 : 400,
+                    }}
+                  >
+                    <span style={{
+                      width: 16, height: 16, borderRadius: 4, border: `2px solid ${sel ? 'var(--primary)' : '#cbd5e1'}`,
+                      background: sel ? 'var(--primary)' : '#fff', display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', flexShrink: 0, fontSize: '.65rem', color: '#fff',
+                    }}>
+                      {sel ? '✓' : ''}
+                    </span>
+                    {mes}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Resto de filtros simples */}
         {[
-          { key: 'year', opts: years, label: 'Año' },
-          { key: 'mes', opts: meses, label: 'Mes' },
           { key: 'vendedor', opts: vendedores, label: 'Vendedor' },
-          { key: 'canal', opts: canales, label: 'Canal' },
-          { key: 'destino', opts: destinos, label: 'Destino' },
-          { key: 'escuela', opts: escuelas, label: 'Escuela' },
-          { key: 'nacionalidad', opts: nacs, label: 'Nacionalidad' },
+          { key: 'canal',    opts: canales,    label: 'Canal' },
+          { key: 'destino',  opts: destinos,   label: 'Destino' },
+          { key: 'escuela',  opts: escuelas,   label: 'Escuela' },
+          { key: 'nacionalidad', opts: nacs,   label: 'Nacionalidad' },
         ].map(({ key, opts, label }) => (
           <select
             key={key}
@@ -110,9 +242,10 @@ export default function Preview() {
             {opts.map(o => <option key={o} value={o}>{o === 'Todos' ? label + ': Todos' : o}</option>)}
           </select>
         ))}
+
         <button
           style={{ marginLeft: 'auto', padding: '.42rem .9rem', background: '#f1f5f9', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '.82rem', fontFamily: 'inherit' }}
-          onClick={() => setFilters({ year:'Todos', mes:'Todos', vendedor:'Todos', canal:'Todos', destino:'Todos', escuela:'Todos', nacionalidad:'Todos' })}
+          onClick={limpiarFiltros}
         >
           ✖ Limpiar
         </button>
@@ -122,7 +255,7 @@ export default function Preview() {
       <div className={styles.kpiGrid}>
         {[
           { label: 'Ventas Cerradas', value: kpis.totalVentas.toString(), icon: '🎯', gold: false },
-          { label: 'Facturacion Total', value: fmtUSD(kpis.totalRevenue), icon: '💰', gold: true },
+          { label: 'Facturación Total', value: fmtUSD(kpis.totalRevenue), icon: '💰', gold: true },
           { label: 'Ticket Promedio', value: fmtUSD(kpis.ticketPromedio), icon: '📊', gold: true },
           { label: 'Top Vendedor', value: kpis.topVendedor, icon: '🏆', gold: false },
           { label: 'Top Canal', value: kpis.topCanal, icon: '📣', gold: false },
@@ -216,15 +349,15 @@ export default function Preview() {
           </div>
         </div>
 
-        {/* Revenue mensual */}
+        {/* Facturación mensual */}
         <div className={styles.chartCard}>
-          <div className={styles.chartTitle}>💰 Revenue Mensual (USD)</div>
+          <div className={styles.chartTitle}>💰 Facturación Mensual (USD)</div>
           <div className={styles.chartWrap}>
             <Line
               data={{
                 labels: monthly.map(m => m.label),
                 datasets: [{
-                  label: 'Revenue',
+                  label: 'Facturación',
                   data: monthly.map(m => m.revenue),
                   borderColor: '#c8a96e',
                   backgroundColor: 'rgba(200,169,110,.1)',
@@ -241,51 +374,84 @@ export default function Preview() {
       </div>
 
       {/* ── RANKINGS ── */}
-      <div className={styles.grid2} style={{ marginBottom: '1.25rem' }}>
-        {/* Ranking vendedores */}
-        <div className="card">
-          <div className="section-title">🏆 Ranking de Vendedores</div>
-          <table className={styles.rankingTable}>
-            <thead>
-              <tr><th>#</th><th>Vendedor</th><th>Ventas</th><th>Revenue</th><th>Ticket Prom.</th></tr>
-            </thead>
-            <tbody>
-              {vendedorEntries.map(([vendedor, count], i) => {
-                const group = filtered.filter(r => r.vendedor === vendedor);
-                const rev = sumBy(group, r => r.ticket);
-                const avg = count ? Math.round(rev / count) : 0;
-                return (
-                  <tr key={vendedor}>
-                    <td><span style={{ fontWeight: 700, color: PALETTE[i % PALETTE.length] }}>#{i + 1}</span></td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-                        <div style={{
-                          width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-                          background: PALETTE[i % PALETTE.length], display: 'flex',
-                          alignItems: 'center', justifyContent: 'center',
-                          color: '#fff', fontSize: '.65rem', fontWeight: 700,
-                        }}>
-                          {vendedor.slice(0, 2).toUpperCase()}
-                        </div>
-                        {vendedor}
-                      </div>
-                    </td>
-                    <td><strong>{count}</strong></td>
-                    <td>{fmtUSD(rev)}</td>
-                    <td>{fmtUSD(avg)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
 
-        {/* Ranking escuelas */}
+      {/* Ranking vendedores: tabla izquierda + gráfico derecha */}
+      <div className="card" style={{ marginBottom: '1.25rem' }}>
+        <div className="section-title">🏆 Ranking de Vendedores</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
+          {/* Tabla */}
+          <div style={{ overflowX: 'auto' }}>
+            <table className={styles.rankingTable}>
+              <thead>
+                <tr><th>#</th><th>Vendedor</th><th>Ventas</th><th>Facturación</th><th>Ticket Prom.</th></tr>
+              </thead>
+              <tbody>
+                {vendedorEntries.map(([vendedor, count], i) => {
+                  const group = filtered.filter(r => r.vendedor === vendedor);
+                  const rev = sumBy(group, r => r.ticket);
+                  const avg = count ? Math.round(rev / count) : 0;
+                  return (
+                    <tr key={vendedor}>
+                      <td><span style={{ fontWeight: 700, color: PALETTE[i % PALETTE.length] }}>#{i + 1}</span></td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+                          <div style={{
+                            width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+                            background: PALETTE[i % PALETTE.length], display: 'flex',
+                            alignItems: 'center', justifyContent: 'center',
+                            color: '#fff', fontSize: '.65rem', fontWeight: 700,
+                          }}>
+                            {vendedor.slice(0, 2).toUpperCase()}
+                          </div>
+                          {vendedor}
+                        </div>
+                      </td>
+                      <td><strong>{count}</strong></td>
+                      <td>{fmtUSD(rev)}</td>
+                      <td>{fmtUSD(avg)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Gráfico de barras */}
+          <div style={{ height: Math.max(180, vendedorEntries.length * 36) }}>
+            <Bar
+              data={{
+                labels: vendedorEntries.map(([k]) => k),
+                datasets: [{
+                  label: 'Ventas',
+                  data: vendedorEntries.map(([, v]) => v),
+                  backgroundColor: vendedorEntries.map((_, i) => PALETTE[i % PALETTE.length]),
+                  borderRadius: 5,
+                }],
+              }}
+              options={{
+                ...CHART_OPTS,
+                indexAxis: 'y' as const,
+                plugins: {
+                  ...CHART_OPTS.plugins,
+                  tooltip: { callbacks: { label: (c) => ` ${c.raw} venta(s)` } },
+                },
+                scales: {
+                  x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                  y: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                },
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Ranking escuelas */}
+      <div className={styles.grid2} style={{ marginBottom: '1.25rem' }}>
         <div className="card">
           <div className="section-title">🎓 Ranking de Escuelas</div>
           <table className={styles.rankingTable}>
             <thead>
-              <tr><th>#</th><th>Escuela</th><th>Alumnos</th><th>Revenue</th></tr>
+              <tr><th>#</th><th>Escuela</th><th>Alumnos</th><th>Facturación</th></tr>
             </thead>
             <tbody>
               {escuelaEntries.map((data, i) => (
@@ -299,22 +465,140 @@ export default function Preview() {
             </tbody>
           </table>
         </div>
+        <div className={styles.chartCard}>
+          <div className={styles.chartTitle}>🎓 Escuelas por Alumnos</div>
+          <div className={styles.chartWrap}>
+            <Bar
+              data={{
+                labels: escuelaEntries.map(e => e.escuela),
+                datasets: [{
+                  label: 'Alumnos',
+                  data: escuelaEntries.map(e => e.count),
+                  backgroundColor: PALETTE[1],
+                  borderRadius: 5,
+                  hoverBackgroundColor: '#c8a96e',
+                }],
+              }}
+              options={{ ...CHART_OPTS, indexAxis: 'y' as const }}
+            />
+          </div>
+        </div>
       </div>
 
       {/* ── CONVERSIÓN DE PAUTA POR ASESOR ── */}
       <div className="card" style={{ marginBottom: '1.25rem' }}>
-        <div className="section-title">🚀 Conversión de Pauta Publicitaria por Asesor</div>
-        {conversionAsesor.length === 0 ? (
-          <div className="info-box gold" style={{ marginTop: '.5rem' }}>
+        {/* Header con título + filtros propios */}
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '.65rem', marginBottom: '1rem' }}>
+          <div className="section-title" style={{ margin: 0, flex: 1, minWidth: 200 }}>
+            🚀 Conversión de Pauta Publicitaria por Asesor
+          </div>
+
+          {/* Filtro Año */}
+          <select
+            className="vm-select"
+            value={convYear}
+            onChange={e => { setConvYear(e.target.value); setConvMeses([]); }}
+            style={{ minWidth: 110 }}
+          >
+            <option value="Todos">Año: Todos</option>
+            {periodos.years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+
+          {/* Filtro Mes — multi-select */}
+          <div ref={convMesDropdownRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setConvMesDropdownOpen(p => !p)}
+              style={{
+                appearance: 'none', background: '#fff',
+                border: `1px solid ${convMeses.length > 0 ? 'var(--accent)' : 'var(--border)'}`,
+                borderRadius: 'var(--radius-sm)', padding: '.42rem .9rem', fontSize: '.83rem',
+                cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-primary)',
+                display: 'flex', alignItems: 'center', gap: '.4rem', minWidth: 120,
+                fontWeight: convMeses.length > 0 ? 600 : 400,
+              }}
+            >
+              📅 {convMeses.length === 0
+                ? 'Mes: Todos'
+                : convMeses.length === 1
+                  ? convMeses[0].split(' ')[0]
+                  : `${convMeses.length} meses`}
+              <span style={{ marginLeft: 'auto', opacity: .5, fontSize: '.7rem' }}>▼</span>
+            </button>
+
+            {convMesDropdownOpen && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 200,
+                background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+                boxShadow: 'var(--shadow-md)', minWidth: 200, padding: '.4rem 0',
+                maxHeight: 250, overflowY: 'auto',
+              }}>
+                {convMeses.length > 0 && (
+                  <button
+                    onClick={() => { setConvMeses([]); }}
+                    style={{ width: '100%', padding: '.4rem .85rem', background: '#fff7ed', border: 'none', textAlign: 'left', fontSize: '.8rem', cursor: 'pointer', color: '#e67e22', fontWeight: 600, fontFamily: 'inherit', borderBottom: '1px solid var(--border)' }}
+                  >
+                    ✖ Limpiar selección
+                  </button>
+                )}
+                {convMesesDisponibles.length === 0 && (
+                  <div style={{ padding: '.6rem .85rem', color: 'var(--text-muted)', fontSize: '.83rem' }}>Sin meses disponibles</div>
+                )}
+                {convMesesDisponibles.map(mes => {
+                  const sel = convMeses.includes(mes);
+                  return (
+                    <button
+                      key={mes}
+                      onClick={() => setConvMeses(prev => sel ? prev.filter(m => m !== mes) : [...prev, mes])}
+                      style={{
+                        width: '100%', padding: '.45rem .85rem', background: sel ? '#f0f7ff' : '#fff',
+                        border: 'none', textAlign: 'left', fontSize: '.84rem', cursor: 'pointer',
+                        color: sel ? 'var(--primary)' : 'var(--text-primary)', fontFamily: 'inherit',
+                        display: 'flex', alignItems: 'center', gap: '.6rem', fontWeight: sel ? 600 : 400,
+                      }}
+                    >
+                      <span style={{
+                        width: 16, height: 16, borderRadius: 4,
+                        border: `2px solid ${sel ? 'var(--primary)' : '#cbd5e1'}`,
+                        background: sel ? 'var(--primary)' : '#fff', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0, fontSize: '.65rem', color: '#fff',
+                      }}>
+                        {sel ? '✓' : ''}
+                      </span>
+                      {mes}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Limpiar filtros locales */}
+          {(convYear !== 'Todos' || convMeses.length > 0) && (
+            <button
+              onClick={() => { setConvYear('Todos'); setConvMeses([]); setConvMesDropdownOpen(false); }}
+              style={{ padding: '.42rem .75rem', background: '#f1f5f9', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '.8rem', fontFamily: 'inherit' }}
+            >
+              ✖ Limpiar
+            </button>
+          )}
+        </div>
+
+        {/* Contenido */}
+        {periodos.meses.length === 0 ? (
+          <div className="info-box gold">
             <strong>⚠️ Sin datos cargados.</strong> Completá <code>/data/leadsPorAsesor.ts</code> con los
             leads de Pauta asignados a cada asesor por mes (desde HubSpot) para ver acá su % de conversión.
+          </div>
+        ) : conversionAsesor.length === 0 ? (
+          <div className="info-box" style={{ background: '#f8faff' }}>
+            Sin asesores con datos para el período seleccionado.
           </div>
         ) : (
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
             gap: '.85rem',
-            marginTop: '.5rem',
           }}>
             {conversionAsesor.map((row, i) => (
               <div key={row.vendedor} className={styles.kpiCard} style={{
@@ -329,7 +613,9 @@ export default function Preview() {
                   }}>
                     {row.vendedor.slice(0, 2).toUpperCase()}
                   </div>
-                  <span style={{ fontWeight: 600, fontSize: '.85rem', color: 'var(--primary)' }}>{row.vendedor}</span>
+                  <span style={{ fontWeight: 600, fontSize: '.82rem', color: 'var(--primary)', lineHeight: 1.2 }}>
+                    {row.vendedor}
+                  </span>
                 </div>
                 <div className="kpi-value" style={{
                   fontSize: '1.5rem',

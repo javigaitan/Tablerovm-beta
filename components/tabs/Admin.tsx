@@ -23,7 +23,7 @@ export default function Admin() {
       <div className={styles.grid4} style={{ marginBottom: '1.25rem' }}>
         {[
           { label: 'Registros Cargados', value: totalRegistros, icon: '📋', color: '#1e3a5f' },
-          { label: 'Revenue en Sistema', value: '$' + totalRevenue.toLocaleString('es-AR', { maximumFractionDigits: 0 }), icon: '💰', color: '#c8a96e' },
+          { label: 'Facturación en Sistema', value: '$' + totalRevenue.toLocaleString('es-AR', { maximumFractionDigits: 0 }), icon: '💰', color: '#c8a96e' },
           { label: 'Vendedores Activos', value: vendedores.length, icon: '👤', color: '#3498db' },
           { label: 'Destinos Disponibles', value: destinos.length, icon: '🌍', color: '#22c55e' },
         ].map(stat => (

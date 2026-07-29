@@ -215,14 +215,17 @@ export function getYears(data: SaleRecord[]): number[] {
   return Array.from(new Set(years)).sort();
 }
 
-/** Meses únicos de venta en orden cronológico real (no alfabético). */
-export function getMesesVenta(data: SaleRecord[]): string[] {
+/** Meses únicos de venta en orden cronológico real, opcionalmente filtrados por año. */
+export function getMesesVenta(data: SaleRecord[], year?: string): string[] {
   const ORDEN_MES: Record<string, number> = {
     enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5,
     julio: 6, agosto: 7, septiembre: 8, octubre: 9, noviembre: 10, diciembre: 11,
   };
+  const source = year && year !== 'Todos'
+    ? data.filter(r => r.fecha.getFullYear().toString() === year)
+    : data;
   const meses = Array.from(
-    new Set(data.map(r => r.mesVentaRaw).filter((m): m is string => Boolean(m)))
+    new Set(source.map(r => r.mesVentaRaw).filter((m): m is string => Boolean(m)))
   );
   return meses.sort((a, b) => {
     const [mesA, anioA] = a.toLowerCase().split(' ');
@@ -237,7 +240,7 @@ export function filterData(
   data: SaleRecord[],
   filters: {
     year?: string;
-    mes?: string;
+    meses?: string[];      // array vacío o ['Todos'] = sin filtro; múltiples = OR
     vendedor?: string;
     canal?: string;
     destino?: string;
@@ -247,7 +250,9 @@ export function filterData(
 ): SaleRecord[] {
   return data.filter(r => {
     if (filters.year && filters.year !== 'Todos' && r.fecha.getFullYear().toString() !== filters.year) return false;
-    if (filters.mes && filters.mes !== 'Todos' && r.mesVentaRaw !== filters.mes) return false;
+    if (filters.meses && filters.meses.length > 0 && !filters.meses.includes('Todos')) {
+      if (!r.mesVentaRaw || !filters.meses.includes(r.mesVentaRaw)) return false;
+    }
     if (filters.vendedor && filters.vendedor !== 'Todos' && r.vendedor !== filters.vendedor) return false;
     if (filters.canal && filters.canal !== 'Todos' && r.canal !== filters.canal) return false;
     if (filters.destino && filters.destino !== 'Todos' && r.destino !== filters.destino) return false;
@@ -376,6 +381,28 @@ export function getLeadsTotalsMeses(totals: LeadsTotal[] = leadsTotals): string[
   return Array.from(new Set(totals.map(t => t.mes)));
 }
 
+/** Años y meses únicos presentes en leadsPorAsesor, para sus filtros locales. */
+export function getLeadsPorAsesorPeriodos(asignaciones: LeadsPautaAsesor[] = leadsPorAsesor): {
+  years: string[];
+  meses: string[];
+} {
+  const ORDEN_MES: Record<string, number> = {
+    enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5,
+    julio: 6, agosto: 7, septiembre: 8, octubre: 9, noviembre: 10, diciembre: 11,
+  };
+  const years = Array.from(new Set(
+    asignaciones.map(a => a.mes.trim().split(' ').pop() ?? '')
+  )).filter(Boolean).sort();
+  const meses = Array.from(new Set(asignaciones.map(a => a.mes))).sort((a, b) => {
+    const [mesA, anioA] = a.toLowerCase().split(' ');
+    const [mesB, anioB] = b.toLowerCase().split(' ');
+    const yearDiff = parseInt(anioA) - parseInt(anioB);
+    if (yearDiff !== 0) return yearDiff;
+    return (ORDEN_MES[mesA] ?? 0) - (ORDEN_MES[mesB] ?? 0);
+  });
+  return { years, meses };
+}
+
 // ─── Conversión de Pauta por asesor (cruce con leadsPorAsesor.ts) ────────────
 export interface ConversionAsesorRow {
   vendedor: string;
@@ -403,25 +430,35 @@ function ventasPautaPorAsesorYMes(data: SaleRecord[]): Record<string, number> {
 /**
  * Conversión de Pauta por asesor, cruzando ventas reales (canal Pauta) contra
  * los leads de Pauta asignados a cada asesor cargados en leadsPorAsesor.ts.
- * Se agrega por asesor (suma todos los meses cargados) para mostrar como
- * tarjeta única por vendedor en la Vista Previa Beta.
+ * Acepta filtros opcionales de año y meses para acotar el período analizado.
  */
 export function getConversionPautaPorAsesor(
   data: SaleRecord[] = salesData,
-  asignaciones: LeadsPautaAsesor[] = leadsPorAsesor
+  asignaciones: LeadsPautaAsesor[] = leadsPorAsesor,
+  filtros?: { year?: string; meses?: string[] }
 ): ConversionAsesorRow[] {
+  // Filtrar asignaciones por año y/o meses seleccionados
+  const asignacionesFiltradas = asignaciones.filter(a => {
+    if (filtros?.year && filtros.year !== 'Todos') {
+      // el mes viene como "Febrero 2026" — extraemos el año
+      const anioMes = a.mes.trim().split(' ').pop();
+      if (anioMes !== filtros.year) return false;
+    }
+    if (filtros?.meses && filtros.meses.length > 0) {
+      if (!filtros.meses.includes(a.mes)) return false;
+    }
+    return true;
+  });
+
   const ventasMap = ventasPautaPorAsesorYMes(data);
 
-  // Agrupamos leadsPorAsesor por vendedor, sumando todos los meses cargados
   const leadsPorVendedor: Record<string, number> = {};
-  asignaciones.forEach(a => {
+  asignacionesFiltradas.forEach(a => {
     leadsPorVendedor[a.vendedor] = (leadsPorVendedor[a.vendedor] ?? 0) + a.leadsPauta;
   });
 
-  // Para cada vendedor con datos cargados, sumamos solo las ventas de los
-  // meses que tienen leadsPauta cargado (evita mezclar meses sin denominador)
   const mesesPorVendedor: Record<string, Set<string>> = {};
-  asignaciones.forEach(a => {
+  asignacionesFiltradas.forEach(a => {
     if (!mesesPorVendedor[a.vendedor]) mesesPorVendedor[a.vendedor] = new Set();
     mesesPorVendedor[a.vendedor].add(a.mes);
   });

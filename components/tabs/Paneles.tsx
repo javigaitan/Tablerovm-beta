@@ -6,10 +6,10 @@ const PANELES = [
     color: '#1e3a5f',
     items: [
       'Total de ventas cerradas del período seleccionado',
-      'Revenue total y ticket promedio por venta',
+      'Facturación total y ticket promedio por venta',
       'Tasa de conversión lead → customer',
       'Top vendedor, canal y destino del período',
-      'Evolución mensual de ventas y revenue (gráfico de barras)',
+      'Evolución mensual de ventas y facturación (gráfico de barras)',
     ],
   },
   {
@@ -17,7 +17,7 @@ const PANELES = [
     color: '#3498db',
     items: [
       'Ranking de ventas por propietario de contacto',
-      'Revenue generado por cada vendedor',
+      'Facturación generada por cada vendedor',
       'Ticket promedio por vendedor',
       'Distribución de canales por vendedor (gráfico de dona)',
       'Comparativa mes a mes entre vendedores',
@@ -39,7 +39,7 @@ const PANELES = [
     color: '#22c55e',
     items: [
       'Distribución de alumnos por destino (Irlanda, Malta, Alemania, España…)',
-      'Revenue por destino de viaje',
+      'Facturación por destino de viaje',
       'Número de semanas promedio por destino',
       'Escuelas más populares por destino',
       'Destino vs Nacionalidad del alumno',
@@ -50,7 +50,7 @@ const PANELES = [
     color: '#e67e22',
     items: [
       'Ranking de escuelas por cantidad de alumnos',
-      'Revenue por escuela contratada',
+      'Facturación por escuela contratada',
       'Distribución de escuelas por país de destino',
       'Comparativa de ticket promedio entre escuelas',
       'Escuelas con mayor crecimiento interanual',
@@ -61,7 +61,7 @@ const PANELES = [
     color: '#e74c3c',
     items: [
       'Distribución de ventas por nacionalidad del alumno',
-      'Revenue por país de origen',
+      'Facturación por país de origen',
       'Evolución temporal por mercado (AR, MX, CHI, UY…)',
       'Nationalidad vs Canal de adquisición',
       'Penetración de mercado por vendedor',
@@ -73,7 +73,7 @@ const PANELES = [
     items: [
       'Ventas por mes de venta vs mes de inicio de clases',
       'Lead time entre venta y comienzo del curso',
-      'Tendencia anual de revenue (2024 vs 2025 vs 2026)',
+      'Tendencia anual de facturación (2024 vs 2025 vs 2026)',
       'Estacionalidad: meses pico de venta',
       'Mes de campaña publicitaria vs mes de venta',
     ],
@@ -84,7 +84,7 @@ const PANELES = [
     items: [
       'Ventas de renovación por mes',
       'Tasa de renovación sobre base de clientes',
-      'Revenue de renovaciones vs ventas nuevas',
+      'Facturación de renovaciones vs ventas nuevas',
       'Distribución de renovaciones por vendedor',
       'Destinos más frecuentes en renovaciones',
     ],

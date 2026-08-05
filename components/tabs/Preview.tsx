@@ -154,8 +154,26 @@ export default function Preview() {
 
   return (
     <div className={styles.container + ' fade-in'}>
+      <div style={{
+          display: 'flex', alignItems: 'center', gap: '.5rem',
+          background: '#f0f7ff', border: '1px solid #bee3f8',
+          borderRadius: 'var(--radius-sm)', padding: '.45rem .85rem',
+          fontSize: '.78rem', color: 'var(--primary)', flexShrink: 0,
+          alignSelf: 'flex-start',
+        }}>
+          <span style={{ fontSize: '1rem' }}>🕐</span>
+          <div>
+            <div style={{ fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase', fontSize: '.7rem', opacity: .7 }}>
+              Última actualización de datos
+            </div>
+            <div style={{ fontWeight: 600 }}>{ultimaActualizacion}</div>
+          </div>
+        </div>
+        <br></br>
       <h2 className={styles.pageTitle}>👁️ Vista Previa Beta</h2>
       <p className={styles.pageSubtitle}>Dashboard interactivo — datos del array contacts.ts</p>
+
+      
 
       {/* ── FILTROS ── */}
       <div className={styles.filtersBar}>
@@ -646,94 +664,7 @@ export default function Preview() {
         )}
       </div>
 
-      {/* ── TABLA DE REGISTROS ── */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '.5rem' }}>
-          <div className="section-title" style={{ margin: 0 }}>📋 Registros ({filtered.length})</div>
-          <span className="badge badge-blue">{filtered.length} resultado{filtered.length !== 1 ? 's' : ''}</span>
-        </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table className="vm-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Cliente</th>
-                <th>Vendedor</th>
-                <th>Escuela</th>
-                <th>Destino</th>
-                <th>Nacionalidad</th>
-                <th>Canal</th>
-                <th>Ticket</th>
-                <th>Fecha Cierre</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageData.map((r, i) => (
-                <tr key={i}>
-                  <td style={{ color: 'var(--text-muted)', fontSize: '.78rem' }}>{page * PAGE_SIZE + i + 1}</td>
-                  <td style={{ fontWeight: 500 }}>{r.cliente}</td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
-                      <div style={{
-                        width: 20, height: 20, borderRadius: '50%',
-                        background: PALETTE[vendedorEntries.findIndex(([k]) => k === r.vendedor) % PALETTE.length],
-                        flexShrink: 0,
-                      }} />
-                      {r.vendedor}
-                    </div>
-                  </td>
-                  <td>{r.escuela}</td>
-                  <td><span className="badge badge-blue">{r.destino}</span></td>
-                  <td>{r.nacionalidad}</td>
-                  <td>
-                    <span className="badge" style={{
-                      background: (CANAL_COLORS[r.canal] ?? '#95a5a6') + '22',
-                      color: CANAL_COLORS[r.canal] ?? '#64748b',
-                    }}>
-                      {r.canal}
-                    </span>
-                  </td>
-                  <td style={{ fontWeight: 600, color: r.ticket > 0 ? '#22c55e' : 'var(--text-muted)' }}>
-                    {r.ticket > 0 ? fmtUSD(r.ticket) : '—'}
-                  </td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: '.83rem' }}>
-                    {r.fecha.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: '2-digit' })}
-                  </td>
-                </tr>
-              ))}
-              {pageData.length === 0 && (
-                <tr><td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                  Sin resultados para los filtros seleccionados.
-                </td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Paginación */}
-        {totalPages > 1 && (
-          <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'center', marginTop: '1rem', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => setPage(p => Math.max(0, p - 1))}
-              disabled={page === 0}
-              style={{ padding: '.35rem .75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', cursor: page === 0 ? 'default' : 'pointer', opacity: page === 0 ? .4 : 1, fontFamily: 'inherit', fontSize: '.82rem' }}
-            >← Ant.</button>
-            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-              const p = totalPages <= 7 ? i : i; // simple: show all if ≤7
-              return (
-                <button key={p} onClick={() => setPage(p)}
-                  style={{ padding: '.35rem .65rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.82rem', background: page === p ? 'var(--primary)' : '#fff', color: page === p ? '#fff' : 'inherit', fontWeight: page === p ? 600 : 400 }}
-                >{p + 1}</button>
-              );
-            })}
-            <button
-              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-              disabled={page === totalPages - 1}
-              style={{ padding: '.35rem .75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', cursor: page === totalPages - 1 ? 'default' : 'pointer', opacity: page === totalPages - 1 ? .4 : 1, fontFamily: 'inherit', fontSize: '.82rem' }}
-            >Sig. →</button>
-          </div>
-        )}
-      </div>
+      
     </div>
   );
 }

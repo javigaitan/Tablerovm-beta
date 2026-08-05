@@ -6,7 +6,7 @@ import {
   LineElement, PointElement, Title, Tooltip, Legend,
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import { salesData, filterData, calcKPIs, getMonthlySeries, getUniqueValues, getYears, getMesesVenta, countBy, groupBy, sumBy, getConversionPautaPorAsesor, getLeadsPorAsesorPeriodos } from '@/lib/dataUtils';
+import { salesData, filterData, calcKPIs, getMonthlySeries, getUniqueValues, getYears, getMesesVenta, countBy, groupBy, sumBy, getConversionPautaPorAsesor, getLeadsPorAsesorPeriodos, getUltimaActualizacion } from '@/lib/dataUtils';
 import styles from './Tab.module.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, LineElement, PointElement, Title, Tooltip, Legend);
@@ -145,6 +145,13 @@ export default function Preview() {
   const pageData = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
 
+  // Clave dinámica para forzar re-mount de Chart.js cuando cambian los filtros.
+  // Sin esto, Chart.js intenta animar el update y falla cuando cambia la
+  // cantidad de labels (ej: 10 vendedores → 3 del mes filtrado).
+  const chartKey = `${filters.year}-${filters.vendedor}-${filters.canal}-${filters.destino}-${filters.escuela}-${filters.nacionalidad}-${mesesSeleccionados.join(',')}`;
+
+  const ultimaActualizacion = getUltimaActualizacion();
+
   return (
     <div className={styles.container + ' fade-in'}>
       <h2 className={styles.pageTitle}>👁️ Vista Previa Beta</h2>
@@ -277,6 +284,7 @@ export default function Preview() {
           <div className={styles.chartTitle}>📅 Evolución Mensual de Ventas</div>
           <div className={styles.chartWrap} style={{ height: 220 }}>
             <Bar
+              key={chartKey + '-monthly'}
               data={{
                 labels: monthly.map(m => m.label),
                 datasets: [{
@@ -297,6 +305,7 @@ export default function Preview() {
           <div className={styles.chartTitle}>👤 Ventas por Vendedor</div>
           <div className={styles.chartWrap}>
             <Bar
+              key={chartKey + '-vendedor'}
               data={{
                 labels: vendedorEntries.map(([k]) => k),
                 datasets: [{
@@ -316,6 +325,7 @@ export default function Preview() {
           <div className={styles.chartTitle}>📣 Distribución por Canal</div>
           <div className={styles.chartWrap}>
             <Doughnut
+              key={chartKey + '-canal'}
               data={{
                 labels: canalEntries.map(([k]) => k),
                 datasets: [{
@@ -334,6 +344,7 @@ export default function Preview() {
           <div className={styles.chartTitle}>🌍 Ventas por Destino</div>
           <div className={styles.chartWrap}>
             <Bar
+              key={chartKey + '-destino'}
               data={{
                 labels: destinoEntries.map(([k]) => k),
                 datasets: [{
@@ -354,6 +365,7 @@ export default function Preview() {
           <div className={styles.chartTitle}>💰 Facturación Mensual (USD)</div>
           <div className={styles.chartWrap}>
             <Line
+              key={chartKey + '-facturacion'}
               data={{
                 labels: monthly.map(m => m.label),
                 datasets: [{
@@ -419,6 +431,7 @@ export default function Preview() {
           {/* Gráfico de barras */}
           <div style={{ height: Math.max(180, vendedorEntries.length * 36) }}>
             <Bar
+              key={chartKey + '-vendedor-ranking'}
               data={{
                 labels: vendedorEntries.map(([k]) => k),
                 datasets: [{
@@ -469,6 +482,7 @@ export default function Preview() {
           <div className={styles.chartTitle}>🎓 Escuelas por Alumnos</div>
           <div className={styles.chartWrap}>
             <Bar
+              key={chartKey + '-escuelas'}
               data={{
                 labels: escuelaEntries.map(e => e.escuela),
                 datasets: [{

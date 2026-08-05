@@ -119,6 +119,26 @@ export function toSaleRecord(c: Contact): SaleRecord {
 
 export const salesData: SaleRecord[] = allContacts.map(toSaleRecord);
 
+/**
+ * Devuelve la fecha más reciente encontrada en ultimaActividad de todos los
+ * contactos — refleja cuándo fue la última actualización real de datos en HubSpot.
+ * Formato de salida: "DD/MM/YYYY HH:mm"
+ */
+export function getUltimaActualizacion(): string {
+  let max = 0;
+  allContacts.forEach(c => {
+    if (!c.ultimaActividad) return;
+    const t = new Date(c.ultimaActividad.replace(' ', 'T')).getTime();
+    if (!isNaN(t) && t > max) max = t;
+  });
+  if (!max) return 'Sin datos';
+  const d = new Date(max);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+
+
 // ─── Helpers de agrupación ────────────────────────────────────────────────────
 export function groupBy<T>(arr: T[], key: (item: T) => string): Record<string, T[]> {
   return arr.reduce((acc, item) => {

@@ -1,6 +1,6 @@
 'use client';
 import { useMemo } from 'react';
-import { salesData, getConversionSummary, getConversionByChannel } from '@/lib/dataUtils';
+import { salesData, getConversionSummary, getConversionByChannel, getUltimaActualizacion } from '@/lib/dataUtils';
 import { leadsTotals } from '@/data/leadsTotals';
 import styles from './Tab.module.css';
 
@@ -21,16 +21,37 @@ function conversionColor(pct: number): string {
 export default function Conversion() {
   const summary = useMemo(() => getConversionSummary(salesData, leadsTotals), []);
   const rows = useMemo(() => getConversionByChannel(salesData, leadsTotals), []);
+  const ultimaActualizacion = getUltimaActualizacion();
 
   const filasConDatos = rows.filter(r => !r.sinDatos);
   const filasSinDatos = rows.filter(r => r.sinDatos);
 
   return (
     <div className={styles.container + ' fade-in'}>
-      <h2 className={styles.pageTitle}>🎯 Conversión de Leads</h2>
-      <p className={styles.pageSubtitle}>
-        Conversión general y conversión de Pauta Publicitaria — cruce entre ventas y leads asignados
-      </p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '.75rem', marginBottom: '.25rem' }}>
+        <div>
+          <h2 className={styles.pageTitle} style={{ marginBottom: '.25rem' }}>🎯 Conversión de Leads</h2>
+          <p className={styles.pageSubtitle} style={{ marginBottom: 0 }}>
+            Conversión general y conversión de Pauta Publicitaria — cruce entre ventas y leads asignados
+          </p>
+        </div>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '.5rem',
+          background: '#f0f7ff', border: '1px solid #bee3f8',
+          borderRadius: 'var(--radius-sm)', padding: '.45rem .85rem',
+          fontSize: '.78rem', color: 'var(--primary)', flexShrink: 0,
+          alignSelf: 'flex-start',
+        }}>
+          <span style={{ fontSize: '1rem' }}>🕐</span>
+          <div>
+            <div style={{ fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase', fontSize: '.7rem', opacity: .7 }}>
+              Última actualización de datos
+            </div>
+            <div style={{ fontWeight: 600 }}>{ultimaActualizacion}</div>
+          </div>
+        </div>
+      </div>
+
 
       {!summary.tieneDatos ? (
         <div className="info-box gold">

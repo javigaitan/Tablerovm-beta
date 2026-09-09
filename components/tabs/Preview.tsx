@@ -6,7 +6,7 @@ import {
   LineElement, PointElement, Title, Tooltip, Legend,
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import { salesData, filterData, calcKPIs, getMonthlySeries, getUniqueValues, getYears, getMesesVenta, countBy, groupBy, sumBy, getConversionPautaPorAsesor, getLeadsPorAsesorPeriodos, getUltimaActualizacion } from '@/lib/dataUtils';
+import { salesData, filterData, calcKPIs, getMonthlySeries, getUniqueValues, getYears, getMesesVenta, countBy, groupBy, sumBy, getConversionPautaPorAsesor, getLeadsPorAsesorPeriodos, getUltimaActualizacion, getVentasPorCampania, getMesesCampania, getAnosCampania } from '@/lib/dataUtils';
 import styles from './Tab.module.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, LineElement, PointElement, Title, Tooltip, Legend);
@@ -51,6 +51,12 @@ export default function Preview() {
   const [convMesDropdownOpen, setConvMesDropdownOpen] = useState(false);
   const convMesDropdownRef = useRef<HTMLDivElement>(null);
 
+  // ── Filtros del bloque Campaña Publicitaria ───────────────────────────────
+  const [campYear, setCampYear] = useState('Todos');
+  const [campMeses, setCampMeses] = useState<string[]>([]);
+  const [campMesDropdownOpen, setCampMesDropdownOpen] = useState(false);
+  const campMesDropdownRef = useRef<HTMLDivElement>(null);
+
   // Cierre de dropdowns al hacer click fuera
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -59,6 +65,9 @@ export default function Preview() {
       }
       if (convMesDropdownRef.current && !convMesDropdownRef.current.contains(e.target as Node)) {
         setConvMesDropdownOpen(false);
+      }
+      if (campMesDropdownRef.current && !campMesDropdownRef.current.contains(e.target as Node)) {
+        setCampMesDropdownOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -152,28 +161,40 @@ export default function Preview() {
 
   const ultimaActualizacion = getUltimaActualizacion();
 
+  // ── Datos de Campaña Publicitaria ─────────────────────────────────────────
+  const campYears = useMemo(() => getAnosCampania(salesData), []);
+  const campMesesDisponibles = useMemo(
+    () => getMesesCampania(salesData, campYear),
+    [campYear]
+  );
+  const ventasCampania = useMemo(
+    () => getVentasPorCampania(salesData, { year: campYear, meses: campMeses }),
+    [campYear, campMeses]
+  );
+
+  // Agrupamos por campaña (para barras apiladas) y por mes de venta (para eje X)
+  const campanias = useMemo(
+    () => Array.from(new Set(ventasCampania.map(r => r.campania))).sort(),
+    [ventasCampania]
+  );
+  const mesesEjeX = useMemo(
+    () => Array.from(new Set(ventasCampania.map(r => r.mesVenta))).sort((a, b) => {
+      const ORDEN: Record<string, number> = { enero:0,febrero:1,marzo:2,abril:3,mayo:4,junio:5,julio:6,agosto:7,septiembre:8,octubre:9,noviembre:10,diciembre:11 };
+      const [mA, yA] = a.toLowerCase().split(' ');
+      const [mB, yB] = b.toLowerCase().split(' ');
+      return parseInt(yA) - parseInt(yB) || (ORDEN[mA]??0) - (ORDEN[mB]??0);
+    }),
+    [ventasCampania]
+  );
+
+  // Paleta para campañas
+  const CAMP_PALETTE = ['#1e3a5f','#3498db','#2ecc71','#9b59b6','#f39c12','#1abc9c','#e67e22','#e74c3c','#e91e63','#00bcd4','#607d8b','#c8a96e'];
+  const campKey = `${campYear}-${campMeses.join(',')}`;
+
   return (
     <div className={styles.container + ' fade-in'}>
-      <div style={{
-          display: 'flex', alignItems: 'center', gap: '.5rem',
-          background: '#f0f7ff', border: '1px solid #bee3f8',
-          borderRadius: 'var(--radius-sm)', padding: '.45rem .85rem',
-          fontSize: '.78rem', color: 'var(--primary)', flexShrink: 0,
-          alignSelf: 'flex-start',
-        }}>
-          <span style={{ fontSize: '1rem' }}>🕐</span>
-          <div>
-            <div style={{ fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase', fontSize: '.7rem', opacity: .7 }}>
-              Última actualización de datos
-            </div>
-            <div style={{ fontWeight: 600 }}>{ultimaActualizacion}</div>
-          </div>
-        </div>
-        <br></br>
       <h2 className={styles.pageTitle}>👁️ Vista Previa Beta</h2>
       <p className={styles.pageSubtitle}>Dashboard interactivo — datos del array contacts.ts</p>
-
-      
 
       {/* ── FILTROS ── */}
       <div className={styles.filtersBar}>
@@ -664,7 +685,252 @@ export default function Preview() {
         )}
       </div>
 
-      
+      {/* ── CAMPAÑA PUBLICITARIA — VENTAS Y CONVERSIÓN ── */}
+      <div className="card" style={{ marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '.75rem', marginBottom: '1rem' }}>
+          <div className="section-title" style={{ margin: 0 }}>📣 Análisis de Campaña Publicitaria (Paid Social)</div>
+          {/* Filtros de año y mes */}
+          <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <select
+              className="vm-select"
+              value={campYear}
+              onChange={e => { setCampYear(e.target.value); setCampMeses([]); }}
+            >
+              {campYears.map(y => <option key={y} value={y}>{y === 'Todos' ? 'Año: Todos' : y}</option>)}
+            </select>
+
+            {/* Multi-select mes campaña */}
+            <div ref={campMesDropdownRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => setCampMesDropdownOpen(p => !p)}
+                style={{
+                  appearance: 'none', background: '#fff',
+                  border: `1px solid ${campMeses.length > 0 ? 'var(--accent)' : 'var(--border)'}`,
+                  borderRadius: 'var(--radius-sm)', padding: '.42rem .9rem', fontSize: '.83rem',
+                  cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-primary)',
+                  display: 'flex', alignItems: 'center', gap: '.4rem', minWidth: 130,
+                  fontWeight: campMeses.length > 0 ? 600 : 400,
+                }}
+              >
+                📅 {campMeses.length === 0 ? 'Mes: Todos' : campMeses.length === 1 ? campMeses[0].split(' ')[0] : `${campMeses.length} meses`}
+                <span style={{ marginLeft: 'auto', opacity: .5, fontSize: '.7rem' }}>▼</span>
+              </button>
+              {campMesDropdownOpen && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 200,
+                  background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+                  boxShadow: 'var(--shadow-md)', minWidth: 200, padding: '.4rem 0', maxHeight: 260, overflowY: 'auto',
+                }}>
+                  {campMeses.length > 0 && (
+                    <button onClick={() => { setCampMeses([]); }} style={{ width: '100%', padding: '.4rem .85rem', background: '#fff7ed', border: 'none', textAlign: 'left', fontSize: '.8rem', cursor: 'pointer', color: '#e67e22', fontWeight: 600, fontFamily: 'inherit', borderBottom: '1px solid var(--border)' }}>
+                      ✖ Limpiar selección
+                    </button>
+                  )}
+                  {campMesesDisponibles.map(mes => {
+                    const sel = campMeses.includes(mes);
+                    return (
+                      <button key={mes} onClick={() => setCampMeses(prev => sel ? prev.filter(m => m !== mes) : [...prev, mes])}
+                        style={{ width: '100%', padding: '.45rem .85rem', background: sel ? '#f0f7ff' : '#fff', border: 'none', textAlign: 'left', fontSize: '.84rem', cursor: 'pointer', color: sel ? 'var(--primary)' : 'var(--text-primary)', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '.6rem', fontWeight: sel ? 600 : 400 }}
+                      >
+                        <span style={{ width: 16, height: 16, borderRadius: 4, border: `2px solid ${sel ? 'var(--primary)' : '#cbd5e1'}`, background: sel ? 'var(--primary)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '.65rem', color: '#fff' }}>
+                          {sel ? '✓' : ''}
+                        </span>
+                        {mes}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {(campYear !== 'Todos' || campMeses.length > 0) && (
+              <button onClick={() => { setCampYear('Todos'); setCampMeses([]); }}
+                style={{ padding: '.42rem .75rem', background: '#f1f5f9', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '.8rem', fontFamily: 'inherit' }}>
+                ✖ Limpiar
+              </button>
+            )}
+          </div>
+        </div>
+
+        {ventasCampania.length === 0 ? (
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '.88rem' }}>
+            Sin ventas de Pauta para el período seleccionado.
+          </div>
+        ) : (
+          <div className={styles.chartsGrid}>
+            {/* Gráfico 1: Ventas por mes según campaña (barras apiladas) */}
+            <div className={styles.chartCard}>
+              <div className={styles.chartTitle}>📊 Ventas por Mes según Campaña</div>
+              <div style={{ fontSize: '.75rem', color: 'var(--text-secondary)', marginBottom: '.75rem' }}>
+                Cada barra = mes de venta · colores = campaña publicitaria de origen
+              </div>
+              <div className={styles.chartWrap} style={{ height: 280 }}>
+                <Bar
+                  key={campKey + '-ventas'}
+                  data={{
+                    labels: mesesEjeX,
+                    datasets: campanias.map((camp, i) => ({
+                      label: camp,
+                      data: mesesEjeX.map(mes => {
+                        const row = ventasCampania.find(r => r.campania === camp && r.mesVenta === mes);
+                        return row?.ventas ?? 0;
+                      }),
+                      backgroundColor: CAMP_PALETTE[i % CAMP_PALETTE.length],
+                      borderRadius: 3,
+                      stack: 'stack',
+                    })),
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: true, position: 'bottom' as const, labels: { font: { size: 10 }, padding: 8, boxWidth: 12 } },
+                      tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${c.raw} venta(s)` } },
+                    },
+                    scales: {
+                      x: { stacked: true, grid: { display: false } },
+                      y: { stacked: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } },
+                    },
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Gráfico 2: Total de ventas por campaña (ranking horizontal) */}
+            <div className={styles.chartCard}>
+              <div className={styles.chartTitle}>🏆 Ranking de Ventas por Campaña</div>
+              <div style={{ fontSize: '.75rem', color: 'var(--text-secondary)', marginBottom: '.75rem' }}>
+                Total de ventas cerradas atribuidas a cada campaña
+              </div>
+              <div className={styles.chartWrap} style={{ height: 280 }}>
+                <Bar
+                  key={campKey + '-ranking'}
+                  data={{
+                    labels: (() => {
+                      const totales: Record<string, number> = {};
+                      ventasCampania.forEach(r => { totales[r.campania] = (totales[r.campania] ?? 0) + r.ventas; });
+                      return Object.entries(totales).sort((a, b) => b[1] - a[1]).map(([k]) => k);
+                    })(),
+                    datasets: [{
+                      label: 'Ventas',
+                      data: (() => {
+                        const totales: Record<string, number> = {};
+                        ventasCampania.forEach(r => { totales[r.campania] = (totales[r.campania] ?? 0) + r.ventas; });
+                        return Object.entries(totales).sort((a, b) => b[1] - a[1]).map(([, v]) => v);
+                      })(),
+                      backgroundColor: campanias.map((_, i) => CAMP_PALETTE[i % CAMP_PALETTE.length]),
+                      borderRadius: 4,
+                      hoverBackgroundColor: '#c8a96e',
+                    }],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y' as const,
+                    plugins: {
+                      legend: { display: false },
+                      tooltip: { callbacks: { label: (c) => ` ${c.raw} venta(s)` } },
+                    },
+                    scales: {
+                      x: { grid: { color: '#f1f5f9' } },
+                      y: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                    },
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── TABLA DE REGISTROS ── */}
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '.5rem' }}>
+          <div className="section-title" style={{ margin: 0 }}>📋 Registros ({filtered.length})</div>
+          <span className="badge badge-blue">{filtered.length} resultado{filtered.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="vm-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Cliente</th>
+                <th>Vendedor</th>
+                <th>Escuela</th>
+                <th>Destino</th>
+                <th>Nacionalidad</th>
+                <th>Canal</th>
+                <th>Ticket</th>
+                <th>Fecha Cierre</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageData.map((r, i) => (
+                <tr key={i}>
+                  <td style={{ color: 'var(--text-muted)', fontSize: '.78rem' }}>{page * PAGE_SIZE + i + 1}</td>
+                  <td style={{ fontWeight: 500 }}>{r.cliente}</td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: '50%',
+                        background: PALETTE[vendedorEntries.findIndex(([k]) => k === r.vendedor) % PALETTE.length],
+                        flexShrink: 0,
+                      }} />
+                      {r.vendedor}
+                    </div>
+                  </td>
+                  <td>{r.escuela}</td>
+                  <td><span className="badge badge-blue">{r.destino}</span></td>
+                  <td>{r.nacionalidad}</td>
+                  <td>
+                    <span className="badge" style={{
+                      background: (CANAL_COLORS[r.canal] ?? '#95a5a6') + '22',
+                      color: CANAL_COLORS[r.canal] ?? '#64748b',
+                    }}>
+                      {r.canal}
+                    </span>
+                  </td>
+                  <td style={{ fontWeight: 600, color: r.ticket > 0 ? '#22c55e' : 'var(--text-muted)' }}>
+                    {r.ticket > 0 ? fmtUSD(r.ticket) : '—'}
+                  </td>
+                  <td style={{ color: 'var(--text-secondary)', fontSize: '.83rem' }}>
+                    {r.fecha.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: '2-digit' })}
+                  </td>
+                </tr>
+              ))}
+              {pageData.length === 0 && (
+                <tr><td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                  Sin resultados para los filtros seleccionados.
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Paginación */}
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'center', marginTop: '1rem', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={page === 0}
+              style={{ padding: '.35rem .75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', cursor: page === 0 ? 'default' : 'pointer', opacity: page === 0 ? .4 : 1, fontFamily: 'inherit', fontSize: '.82rem' }}
+            >← Ant.</button>
+            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+              const p = totalPages <= 7 ? i : i; // simple: show all if ≤7
+              return (
+                <button key={p} onClick={() => setPage(p)}
+                  style={{ padding: '.35rem .65rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.82rem', background: page === p ? 'var(--primary)' : '#fff', color: page === p ? '#fff' : 'inherit', fontWeight: page === p ? 600 : 400 }}
+                >{p + 1}</button>
+              );
+            })}
+            <button
+              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              disabled={page === totalPages - 1}
+              style={{ padding: '.35rem .75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', cursor: page === totalPages - 1 ? 'default' : 'pointer', opacity: page === totalPages - 1 ? .4 : 1, fontFamily: 'inherit', fontSize: '.82rem' }}
+            >Sig. →</button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

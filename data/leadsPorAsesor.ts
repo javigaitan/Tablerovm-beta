@@ -80,6 +80,15 @@ export const leadsPorAsesor: LeadsPautaAsesor[] = [
  { mes: 'Julio 2026', vendedor: 'Sofía Plastina', leadsPauta: 43 },
 
 
+ { mes: 'Agosto 2026', vendedor: 'Margarita García Goyhenetche', leadsPauta: 123 },
+ { mes: 'Agosto 2026', vendedor: 'Carolina Castro', leadsPauta: 163 },
+ { mes: 'Agosto 2026', vendedor: 'Bruno Salotti', leadsPauta: 183  },
+ { mes: 'Agosto 2026', vendedor: 'Catherine Matiz Castro', leadsPauta: 171 },
+ { mes: 'Agosto 2026', vendedor: 'Verónica Pérez', leadsPauta: 195 },
+ { mes: 'Agosto 2026', vendedor: 'Esteban Bianchini', leadsPauta: 160 },
+ { mes: 'Agosto 2026', vendedor: 'Sofía Plastina', leadsPauta: 155 },
+
+
 ];
 
 export default leadsPorAsesor;
